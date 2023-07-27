@@ -1,0 +1,22 @@
+services:
+  db:
+    container_name: recipes-db
+    build:
+      context: .
+      dockerfile: Db.Dockerfile
+    ports:
+      - 5433:5433
+    networks:
+      - recipes
+  api:
+    container_name: recipes-api
+    build:
+      context: .
+      dockerfile: Api.Dockerfile
+    ports:
+      - 8000:8000
+    networks:
+      - recipes
+
+networks:
+  recipes: {}

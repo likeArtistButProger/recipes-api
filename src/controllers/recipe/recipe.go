@@ -135,9 +135,17 @@ func CreateRecipe(recipe RecipeAddRequest) (int, error) {
 func GetRecipes() ([]RecipeGeneral, error) {
 	result := make([]RecipeGeneral, 0)
 
+	// CREATE TABLE public.recipes (
+	// 	id serial4 NOT NULL UNIQUE,
+	// 	title VARCHAR(255) NOT NULL,
+	// 	description TEXT NULL,
+	// 	created_at TIMESTAMP NOT NULL,
+	// 	updated_at TIMESTAMP NOT NULL
+	// );
+
 	sqlStatement := `
 		SELECT id, title, description
-		FROM recipes(id, title, description)
+		FROM recipes
 	`
 
 	rows, err := db.Conn.Query(sqlStatement)
@@ -170,7 +178,7 @@ func GetRecipe(recipeId int) (*Recipe, error) {
 		err    error
 	)
 
-	// NOTE(Nikita): Try to parse it later via 1 request to db, but not that important for a moment.
+	// TODO(Nikita): Try to parse it later via 1 request to db, but not that important for a moment.
 	// sqlStatement := `
 	// 	SELECT
 	// 		r.id,
@@ -268,7 +276,7 @@ type EditRecipeRequest struct {
 
 func EditRecipeGeneral(editRecipeReq EditRecipeRequest) error {
 	sqlStatement := `
-		UPDATE recipes (title, description, updated_at)
+		UPDATE recipes
 		SET title = $1, description = $2, updated_at = now()
 		WHERE id = $3
 	`
@@ -298,13 +306,9 @@ func EditRecipeSteps(editRecipeReq EditRecipeRequest) error {
 		return err
 	}
 
-	// id serial4 NOT NULL UNIQUE,
-	// recipe_id int4 NOT NULL,
-	// number int4 NOT NULL,
-	// step_text TEXT NOT NULL,
 	sqlStatement = `
 		INSERT INTO recipe_steps(recipe_id, number, step_text, created_at, updated_at)
-		VALUES ($1, $2, $3, $3, now(), now())
+		VALUES ($1, $2, $3, now(), now())
 	`
 
 	stmt, err := db.Conn.Prepare(sqlStatement)
@@ -325,18 +329,23 @@ func EditRecipeSteps(editRecipeReq EditRecipeRequest) error {
 
 func EditRecipeIngredients(editRecipeReq EditRecipeRequest) error {
 	sqlStatement := `
-		WITH deleted_rows AS (
-			DELETE FROM recipes_ingredients *
-			WHERE recipe_id = $1
-			RETURNING recipe_id
-		)
+		DELETE FROM recipes_ingredients *
+		WHERE recipe_id = $1
+	`
+
+	_, err := db.Conn.Exec(sqlStatement, editRecipeReq.Id)
+	if err != nil {
+		return err
+	}
+
+	sqlStatement = `
 		INSERT INTO recipes_ingredients (recipe_id, name)
 		SELECT $1, name FROM unnest($2::VARCHAR[]) name
 		ON CONFLICT (recipe_id, name)
 		DO NOTHING
 	`
 
-	_, err := db.Conn.Exec(sqlStatement, editRecipeReq.Id, pq.Array(editRecipeReq.Ingredients))
+	_, err = db.Conn.Exec(sqlStatement, editRecipeReq.Id, pq.Array(editRecipeReq.Ingredients))
 	if err != nil {
 		return err
 	}

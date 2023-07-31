@@ -5,5 +5,5 @@ const (
 	DB_HOST = "db"
 	DB_USER = "postgres"
 	DB_PASS = "qwerty"
-	DB_PORT = "5433"
+	DB_PORT = "5432"
 )

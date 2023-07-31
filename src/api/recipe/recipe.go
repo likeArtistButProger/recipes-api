@@ -3,6 +3,7 @@ package recipe
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"test-api/controllers/recipe"
@@ -11,11 +12,11 @@ import (
 var Handler = http.NewServeMux()
 
 func init() {
-	Handler.HandleFunc("/create", handleCreateRecipe)
-	Handler.HandleFunc("/get-list", handleGetRecipes)
-	Handler.HandleFunc("/get-one-detailed", handleGetRecipeDetailed)
-	Handler.HandleFunc("/update", handleUpdateRecipe)
-	Handler.HandleFunc("/delete", handleRemoveRecipe)
+	Handler.HandleFunc("/recipe/create", handleCreateRecipe)
+	Handler.HandleFunc("/recipe/get-list", handleGetRecipes)
+	Handler.HandleFunc("/recipe/get-one-detailed", handleGetRecipeDetailed)
+	Handler.HandleFunc("/recipe/update", handleUpdateRecipe)
+	Handler.HandleFunc("/recipe/delete", handleRemoveRecipe)
 }
 
 func handleCreateRecipe(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +59,7 @@ func handleCreateRecipe(w http.ResponseWriter, r *http.Request) {
 	recipeId, err := recipe.CreateRecipe(reqBody)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		log.Println(err)
 		fmt.Fprint(w, `{ "error": "internal server error" }`)
 
 		return
@@ -131,9 +133,62 @@ func handleGetRecipeDetailed(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleUpdateRecipe(w http.ResponseWriter, r *http.Request) {
+	var reqBody recipe.EditRecipeRequest
 
+	dec := json.NewDecoder(r.Body)
+
+	err := dec.Decode(&reqBody)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, `{ "error": "invalid req body, make sure its structured as a recipe" }`)
+
+		return
+	}
+
+	err = recipe.EditRecipeGeneral(reqBody)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, `{ "error": "couldn't change general info of recipe" }`)
+
+		return
+	}
+
+	err = recipe.EditRecipeSteps(reqBody)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, `{ "error": "couldn't change steps of recipe" }`)
+
+		return
+	}
+
+	err = recipe.EditRecipeIngredients(reqBody)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, `{ "error": "couldn't change ingredients of recipe" }`)
+
+		return
+	}
 }
 
 func handleRemoveRecipe(w http.ResponseWriter, r *http.Request) {
+	var reqBody struct {
+		Id int `json:"id"`
+	}
 
+	dec := json.NewDecoder(r.Body)
+	err := dec.Decode(&reqBody)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, `{ "error": "bad recipe id provided" }`)
+
+		return
+	}
+
+	err = recipe.RemoveRecipe(reqBody.Id)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, `{ "error": "internal server error" }`)
+
+		return
+	}
 }

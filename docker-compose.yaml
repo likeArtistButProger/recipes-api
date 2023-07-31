@@ -5,9 +5,14 @@ services:
       context: .
       dockerfile: Db.Dockerfile
     ports:
-      - 5433:5433
+      - 5433:5432
     networks:
       - recipes
+    healthcheck:
+      test: [ "CMD", "pg_isready"]
+      interval: 10s
+      timeout: 30s
+      retries: 5
   api:
     container_name: recipes-api
     build:
@@ -15,6 +20,9 @@ services:
       dockerfile: Api.Dockerfile
     ports:
       - 8000:8000
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - recipes
 
